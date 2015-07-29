@@ -1,0 +1,45 @@
+<!doctype html>
+<html ng-app="apiApp">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Página de inicio</title>
+        <link rel="stylesheet" href="/static/libs/bootstrap/dist/css/bootstrap.min.css">
+        <link rel="stylesheet" href="/static/css/animate.css">
+        <link rel="stylesheet" href="/static/css/style.css">
+    </head>
+    <body>
+        <div class="container">
+            {% block nav %}
+            <nav class="navbar navbar-default" ng-controller="nav">
+                <div id="navbar" class="navbar-collapse collapse">
+                    {% raw %}
+                    <ul class="nav navbar-nav">
+                        <li ng-class="activeMenu('/')"><a href="/">create users</a></li>
+                        <li ng-class="activeMenu('/users')"><a href="/users">manage users</a></li>
+                    </ul>
+                    {% endraw %}
+                    <ul class="nav navbar-nav navbar-right">
+                        <li><a href="{{ url_for('logout') }}">logout</a></li>
+                    </ul>
+                </div>
+            </nav>
+            {% endblock %}
+            {%  block content %}{% endblock %}
+        </div>
+        <!-- Thirds libs -->
+        <script defer type="text/javascript" src="/static/libs/jquery/dist/jquery.min.js"></script>
+        <script defer type="text/javascript" src="/static/libs/angular/angular.min.js"></script>
+        <script defer type="text/javascript" src="/static/libs/restangular/dist/restangular.min.js"></script>
+        <script defer type="text/javascript" src="/static/libs/underscore/underscore-min.js"></script>
+        <!-- UI libs -->
+        <script defer type="text/javascript" src="/static/libs/angular-bootstrap/ui-bootstrap-tpls.min.js"></script>
+        <script defer type="text/javascript" src="/static/libs/bootstrap/dist/js/bootstrap.min.js"></script>
+        <script defer type="text/javascript" src="/static/libs/remarkable-bootstrap-notify/dist/bootstrap-notify.min.js"></script>
+        <!-- Own libs -->
+        <script defer type="text/javascript" src="/static/js/script.js"></script>
+        <!--<script defer type="text/javascript" src="/static/js/route.js"></script>-->
+        <script defer type="text/javascript" src="/static/js/controllers.js"></script>
+        {% block scripts %}{% endblock %}
+    </body>
+</html>
