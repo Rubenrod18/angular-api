@@ -46,7 +46,8 @@
 .avatar {
     vertical-align: top;
     display: inline-block;
-    width: 265px;
+    max-height: 265px;
+    max-width: 200px;
 }
 
 .avatar-text {

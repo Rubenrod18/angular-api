@@ -2,7 +2,6 @@
 angular.module('apiApp')
     .controller('index', function ($scope, Restangular, $location) {
         'use strict';
-        $scope.users = [];
         $scope.regex = {
             'name': /^[a-zA-ZáÁéÉíÍóÓúÚñÑ\s]{3,}$/,
             'last_name': /^[a-zA-ZáÁéÉíÍóÓúÚñÑ\s]{3,}$/,
@@ -21,7 +20,7 @@ angular.module('apiApp')
                     .post('users/user', JSON.stringify(user)).then(function (response) {
                         $.notify({
                             title: '<strong>YEAH!</strong>',
-                            message: 'Your user has been created correctly!'
+                            message: 'Your user has been created correctly! Look at your gmail account'
                         }, {
                             animate: {
                                 enter: 'animated fadeInDown',
@@ -33,7 +32,6 @@ angular.module('apiApp')
                             },
                             type: 'success'
                         }); // notify
-                        $scope.users.push(angular.copy(user));
                     }, function (err) {
                         $.notify({
                             title: '<strong>WTF?</strong>',

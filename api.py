@@ -1,43 +1,52 @@
 # -*- coding: utf-8 -*-
 from bson import json_util
 from flask import Flask, request, render_template, url_for, redirect, session
-from flask.ext.login import LoginManager, login_required
-from flask.ext.mail import Mail
+from flask.ext.login import LoginManager, login_required, current_user
+from flask.ext.mail import Mail, Message
 from flask.ext.mongoengine import MongoEngine
-from flask.ext.security import Security, MongoEngineUserDatastore, UserMixin, RoleMixin
+from flask.ext.security import Security, MongoEngineUserDatastore, UserMixin, RoleMixin, login_user, roles_required, \
+    roles_accepted
 from flask.ext.wtf import Form
 from mongoengine import DoesNotExist
-from pymongo import MongoClient
-from pymongo.errors import ConnectionFailure
 from random import randint, choice
 from werkzeug.security import check_password_hash, generate_password_hash
-from wtforms import StringField, SubmitField, BooleanField
+from wtforms import StringField, SubmitField, BooleanField, PasswordField
 import datetime
-import functools
 import logging
 import string
 import unicodedata
 
 app = Flask(__name__)
-mail = Mail(app)
+
 login_manager = LoginManager()
 login_manager.init_app(app)
+
 logger = logging.getLogger(__name__)
+logging.info('Starting logger...')
 
 @app.config.from_object
 class Config(object):
-    SECRET_KEY = 'top-secret'
+    SECRET_KEY                        = 'top-secret'
+
+    SECURITY_POST_LOGIN_VIEW          = '/users'
+    SECURITY_UNAUTHORIZED_VIEW        = '/users'
+
     SECURITY_USER_IDENTITY_ATTRIBUTES = 'username'
+    SECURITY_REGISTRABLE              = False
 
-    MONGODB_HOST = '127.0.0.1'
-    MONGODB_PORT = 27017
-    MONGODB_DB = 'dev'
+    MONGODB_HOST                      = '127.0.0.1'
+    MONGODB_PORT                      = 27017
+    MONGODB_DB                        = 'dbname'
 
-    MAIL_SERVER = 'smtp.gmail.com',
-    MAIL_PORT = 465,
-    MAIL_USE_SSL = True,
-    MAIL_USERNAME = 'you@google.com',
-    MAIL_PASSWORD = 'GooglePasswordHere'
+    MAIL_SERVER                       = 'smtp.gmail.com'
+    MAIL_PORT                         = 465
+    MAIL_USE_SSL                      = True
+    MAIL_USE_TLS                      = False
+    MAIL_USERNAME                     = 'email@gmail.com'
+    MAIL_PASSWORD                     = 'password'
+    MAIL_DEFAULT_SENDER               = 'email@gmail.com'
+
+mail = Mail(app)
 
 # Create database connection object
 db = MongoEngine(app)
@@ -90,11 +99,11 @@ def generate_username(username):
     return user_username
 
 class LoginForm(Form):
-    username = StringField("Username")
-    password = StringField("Password")
-    submit = SubmitField("Login")
+    username = StringField('Username')
+    password = PasswordField('Password')
+    submit = SubmitField('Login')
     remember = BooleanField('Remember')
-    next = BooleanField('Remember')
+    next = BooleanField('Next')
 
     def __init__(self, *args, **kwargs):
         Form.__init__(self, *args, **kwargs)
@@ -105,7 +114,11 @@ class LoginForm(Form):
         if not rv:
             return False
 
-        user = User.objects.get(username=self.username.data)
+        try:
+            user = User.objects.get(username=self.username.data)
+        except DoesNotExist:
+            user = None
+
         if user is None:
             self.username.errors.append('Unknown username')
             return False
@@ -120,13 +133,20 @@ class LoginForm(Form):
 # Setup Flask-Security
 user_datastore = MongoEngineUserDatastore(db, User, Role)
 security = Security(app, user_datastore, login_form=LoginForm)
-# Create a user to test with
+
 @app.before_first_request
-def create_user():
+def initial_data():
     try:
         User.objects.get(username='admin')
     except DoesNotExist as e:
+        user_datastore.create_role(name='create', description='Create users')
+        user_datastore.create_role(name='update', description='Update users')
+        user_datastore.create_role(name='delete', description='Delete users')
+
         user_datastore.create_user(username='admin', password=generate_password_hash('admin', method='pbkdf2:sha512'))
+        user_datastore.add_role_to_user(User.objects.get(username='admin'), Role.objects.get(name='create'))
+        user_datastore.add_role_to_user(User.objects.get(username='admin'), Role.objects.get(name='update'))
+        user_datastore.add_role_to_user(User.objects.get(username='admin'), Role.objects.get(name='delete'))
 
 @app.after_request
 def after_request(response):
@@ -135,46 +155,35 @@ def after_request(response):
     response.headers.add('Access-Control-Allow-Methods', 'GET, PUT, POST, DELETE')
     return response
 
-def connect_db(fnc):
-    @functools.wraps(fnc)
-    def wrapped(*args, **kwargs):
-        host = app.config['MONGODB_HOST']
-        port = app.config['MONGODB_PORT']
-        db = app.config['MONGODB_DB']
-        try:
-            c = MongoClient(host=host, port=port)
-        except ConnectionFailure as e:
-            logger.exception(e)
-            return 'Could not connect to MongoDB', 500
-        dbh = c[db]
-        return fnc(dbh, *args, **kwargs)
-    return wrapped
-
 @app.route('/')
-@app.route('/index')
 @login_required
+@roles_required('create')
 def root_path():
-    return render_template('index.html')
+    roles = [data.to_mongo().to_dict() for data in Role.objects().exclude('id')]
+    return render_template('index.html', roles=roles)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     form = LoginForm()
     if form.validate_on_submit():
-        session['logged_in'] = True
-        return redirect(url_for('index'))
-    return render_template('login_user.html', form=form)
+        username = request.form['username']
+        password = request.form['password']
+        session['user_id'] = form.user.id
+        user = User.objects.filter(username=username, password=password).get()
+        login_user(user, remember=False)
+        return redirect(url_for('/user'))
+    return render_template('security/login_user.html', login=form)
 
 @app.route('/auth/logout')
 @login_required
 def logout():
-    #session.pop('logged_in', None)
     session.clear()
     return redirect(url_for('login'))
 
 @app.route("/users/user", methods=['POST'])
 @login_required
-@connect_db
-def create_user(db):
+@roles_required('create')
+def create_user():
     data = request.json
     try:
         if not 'dni' in data:
@@ -192,15 +201,32 @@ def create_user(db):
             birth_date = data['birth_date'],
             email = data['email']
         ) # User
+        for role in data['roles']:
+            if data['roles'][role] == True:
+                user_datastore.add_role_to_user(user, Role.objects.get(name=role))
         user.save()
+
+        message = '{html}'.format(
+             html = u'Dear ' + user.name.capitalize() + ' ' + user.last_name.capitalize() + ',<br/>'
+                +'Welcome! Thanks for signing up. Here you are your data for sign in.<br/>'
+                +'<p>username: <strong>' + user.username + '</strong></p>'
+                +'<p>password: <strong>' + password + '</strong></p>'
+                +'Regards'
+        ) # format
+        subject = '{subject}'.format(
+            subject = u'Hello, %s ' % user.name.capitalize()
+        ) # format
+
+        msg = Message(recipients=[user.email], html=message, subject=subject)
+        mail.send(msg)
     except Exception as e:
+        logger.exception(e)
         return '', 500
     return '', 200
 
 @app.route("/users", methods=['GET'])
 @login_required
-@connect_db
-def get_users(db):
+def users():
     params = request.args
     if not params:
         return render_template('users.html')
@@ -219,34 +245,30 @@ def get_users(db):
                 users = [data.to_mongo().to_dict() for data in cursor]
                 users.insert(0, cursor.count())
         except Exception as e:
+            logger.exception(e)
             return '', 500
         return json_util.dumps(users), 200
 
-@app.route("/users/<user_username>", methods=['GET', 'PUT', 'DELETE'])
+@app.route("/users/<user_username>", methods=['DELETE', 'PUT'])
 @login_required
-@connect_db
-def get_user(db, user_username):
+@roles_accepted('delete', 'update')
+def get_user(user_username):
     requiredFields = {'name', 'last_name', 'gender', 'dni', 'email', 'birth_date', 'username'}
-    if request.method == 'GET':
-        try:
-            user = User.objects.get(username=user_username).to_mongo().to_dict()
-            user = {key: user[key] for key in user if key in requiredFields}
-        except Exception as e:
-            return '', 500
-        return json_util.dumps(user), 200
-    elif request.method == 'DELETE':
+    if request.method == 'DELETE' and current_user.has_role('delete'):
         try:
             User.objects.get(username=user_username).delete()
         except Exception as e:
+            logger.exception(e)
             return '', 500
         return '', 200
-    elif request.method == 'PUT':
+    elif request.method == 'PUT' and current_user.has_role('update'):
         data = request.json
         data = {key: data[key] for key in data if key in requiredFields}
         del data['username']
         try:
             User.objects(username=user_username).update(upsert=False, multi=False, write_concern=None, full_result=True, **data)
         except Exception as e:
+            logger.exception(e)
             return '', 500
         return '', 200
 

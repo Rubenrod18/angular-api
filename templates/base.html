@@ -4,21 +4,27 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Página de inicio</title>
-        <link rel="stylesheet" href="/static/libs/bootstrap/dist/css/bootstrap.min.css">
-        <link rel="stylesheet" href="/static/css/animate.css">
-        <link rel="stylesheet" href="/static/css/style.css">
+        <link rel="stylesheet" type="text/css" href="/static/libs/bootstrap/dist/css/bootstrap.min.css">
+        <link rel="stylesheet" type="text/css" href="/static/css/animate.css">
+        <link rel="stylesheet" type="text/css" href="/static/css/style.css">
+        {% block css %}{% endblock %}
     </head>
     <body>
         <div class="container">
             {% block nav %}
             <nav class="navbar navbar-default" ng-controller="nav">
-                <div id="navbar" class="navbar-collapse collapse">
-                    {% raw %}
+                <div id="navbar" class="navbar-collapse collapse text-capitalize">
                     <ul class="nav navbar-nav">
+                        {% if current_user.is_authenticated() %}
+                        <li><a class="navbar-brand" href="#">{{ current_user.name }}</a></li>
+                        {% endif %}
+                        {% if current_user.has_role('create') %}
+                        {% raw %}
                         <li ng-class="activeMenu('/')"><a href="/">create users</a></li>
+                        {% endraw %}
+                        {% endif %}
                         <li ng-class="activeMenu('/users')"><a href="/users">manage users</a></li>
                     </ul>
-                    {% endraw %}
                     <ul class="nav navbar-nav navbar-right">
                         <li><a href="{{ url_for('logout') }}">logout</a></li>
                     </ul>

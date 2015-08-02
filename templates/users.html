@@ -1,55 +1,55 @@
 {% extends 'base.html' %}
 {%  block content %}
 <div ng-controller="users">
-    <div class="col-sm-2 col-md-2">
-        <label for="">pagination:</label>
-        <select name="pagination" ng-model="pagination" ng-change="$emit('pagination', pagination)" class="form-control">
-            <option value="">Choose an option</option>
-            <option value="10">10</option>
-            <option value="25">25</option>
-            <option value="50">50</option>
-            <option value="100">100</option>
-        </select>
+    <div class="row">
+      <div class="col-sm-2 col-md-2">
+          <label for="pagination" class="text-capitalize">pagination:</label>
+          <select name="pagination" ng-model="pagination" ng-change="$emit('pagination', pagination)" class="form-control">
+              <option value="">Choose an option</option>
+              <option value="10">10</option>
+              <option value="25">25</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+          </select>
+      </div>
+      <div class="col-sm-8 col-md-7">
+          <pagination total-items="totalItems" items-per-page="itemsPerPage" max-size="10" ng-model="currentPage" ng-click="$emit('currentPage', currentPage)" class="pagination-sm pagination-md" boundary-links="true"></pagination>
+      </div>
+      <div class="col-sm-2 col-md-3">
+          <form ng-submit="$emit('searchText', searchText)">
+              <div class="input-group">
+                  <input type="text" ng-model="searchText" class="form-control" placeholder="Search me!" required/>
+                  <span class="input-group-btn">
+                    <button type="submit" class="text-capitalize btn btn-primary">search</button>
+                  </span>
+              </div>
+          </form>
+      </div>
     </div>
-    <div class="col-sm-8 col-md-7">
-        <pagination total-items="totalItems" items-per-page="itemsPerPage" max-size="10" ng-model="currentPage" ng-click="$emit('currentPage', currentPage)" class="pagination-sm pagination-md" boundary-links="true"></pagination>
-    </div>
-    <div class="col-sm-2 col-md-3">
-        <form ng-submit="$emit('searchText', searchText)">
-            <div class="form-group">
-                <input type="text" ng-model="searchText" class="form-control" placeholder="Search me!" required/>
+    <div class="row ng-cloak">
+      {% raw %}
+      <div class="col-sm-6 col-md-4" ng-repeat="user in users">
+        <div class="thumbnail">
+          <img class="avatar img-responsive" ng-src="/static/img/{{ user.gender }}.png" alt="User avatar" />
+            <div class="caption text-capitalize">
+              <h3>{{ user.username }}</h3>
+              <p>{{ user.name }} {{ user.last_name }}</p>
+              <button class="text-capitalize btn btn-info" ng-click="info($index)">more info</button>
+      {% endraw %}
+              {% if current_user.has_role('update') %}
+              {% raw %}
+              <button class="text-capitalize btn btn-warning" ng-click="update($index)">update</button>
+              {% endraw %}
+              {% endif %}
+              {% if current_user.has_role('delete') %}
+              {% raw %}
+              <button class="text-capitalize btn btn-danger" ng-click="remove($index)">delete</button>
+              {% endraw %}
+              {% endif %}
             </div>
-            <div class="col-md-offset-4">
-                <button type="submit" class="text-capitalize btn btn-primary">search</button>
-            </div>
-        </form>
+        </div>
+      </div>
     </div>
-    <table ng-table class="table table-hover text-capitalize">
-        <thead>
-            <tr>
-                <th>name</th>
-                <th>last name</th>
-                <th>email</th>
-                <th>birth of date</th>
-                <th>options</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% raw %}
-            <tr ng-repeat="user in users" class="ng-cloak">
-                <td>{{user.name}}</td>
-                <td>{{user.last_name}}</td>
-                <td class="text-initial">{{user.email}}</td>
-                <td>{{user.birth_date}}</td>
-                <td>
-                    <button class="text-capitalize btn btn-info" ng-click="info($index)">more info</button>
-                    <button class="text-capitalize btn btn-warning" ng-click="update($index)">update</button>
-                    <button class="text-capitalize btn btn-danger" ng-click="remove($index)">delete</button>
-                </td>
-            </tr>
-            {% endraw %}
-        </tbody>
-    </table>
     <!-- Info user's modal -->
     <script type="text/ng-template" id="info.html">
         <div class="modal-header">

@@ -88,7 +88,7 @@ angular.module('apiApp')
                 animation: true,
                 templateUrl: 'info.html',
                 controller: 'info',
-                size: 'lg',
+                size: 'md',
                 resolve: {
                     data: function () {
                         return {'user': $scope.user };
