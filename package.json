@@ -8,7 +8,13 @@
     "build": "ng build --prod",
     "test": "ng test",
     "lint": "ng lint",
-    "e2e": "ng e2e"
+    "e2e": "ng e2e",
+    "first-release": "npm run release -- --first-release",
+    "patch": "npm run release -- --release-as patch",
+    "minor": "npm run release -- --release-as minor",
+    "major": "npm run release -- --release-as major",
+    "release": "standard-version",
+    "publish-to-master": "git push --follow-tags origin master"
   },
   "private": true,
   "dependencies": {
